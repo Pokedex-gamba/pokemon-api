@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 #[derive(Serialize)]
-pub struct PokemonPictures {
-    pub front_default: String,
-    pub front_shiny: String,
+pub struct PokemonPictures<'a> {
+    pub front_default: &'a str,
+    pub front_shiny: &'a str,
 }
