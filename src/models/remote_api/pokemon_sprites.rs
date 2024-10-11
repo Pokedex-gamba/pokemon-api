@@ -13,6 +13,6 @@ pub struct ApiPokemonSpritesOther {
 
 #[derive(Deserialize, Clone)]
 pub struct ApiPokemonSpritesOtherOfficialArtwork {
-    pub front_default: String,
-    pub front_shiny: String,
+    pub front_default: Option<String>,
+    pub front_shiny: Option<String>,
 }
