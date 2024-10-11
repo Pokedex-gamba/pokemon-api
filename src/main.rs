@@ -1,6 +1,6 @@
 use actix_web::{
     middleware::{Compress, Logger, NormalizePath, TrailingSlash},
-    web::{self, JsonConfig, PathConfig},
+    web::{self, Data, JsonConfig, PathConfig},
     App, HttpServer,
 };
 use jwt_stuff::JwtGrantsMiddleware;
@@ -55,6 +55,11 @@ async fn main() -> std::io::Result<()> {
         let mut jwt_validation = jsonwebtoken::Validation::default();
         jwt_validation.set_required_spec_claims(&["exp", "nbf"]);
 
+        let req_client = reqwest::Client::builder()
+            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
+            .build()
+            .unwrap();
+
         App::new()
             .wrap(JwtGrantsMiddleware::new(jwt_decoding_key, jwt_validation))
             .wrap(NormalizePath::new(TrailingSlash::Trim))
@@ -62,6 +67,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(Compress::default())
             .app_data(JsonConfig::default().error_handler(json_error::json_config_error_handler))
             .app_data(PathConfig::default().error_handler(json_error::json_config_error_handler))
+            .app_data(Data::new(req_client))
             .default_service(if is_debug_on {
                 web::to(default_handler_debug)
             } else {
