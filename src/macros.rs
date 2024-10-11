@@ -40,3 +40,16 @@ build_resp!(resp_400_BadRequest, BadRequest);
 build_resp!(resp_200_Ok, Ok);
 build_resp!(resp_401_Unauthorized, Unauthorized);
 build_resp!(resp_403_Forbidden, Forbidden);
+build_resp!(resp_404_NotFound, NotFound);
+
+#[macro_export]
+macro_rules! yeet_error_macro {
+    ($result:expr) => {
+        match $result {
+            Ok(data) => data,
+            Err(e) => return e,
+        }
+    };
+}
+#[allow(unused_imports)]
+pub use yeet_error_macro as yeet_error;
