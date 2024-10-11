@@ -23,7 +23,7 @@ pub async fn get_by_name(
     )
     .await;
 
-    let api_pokemon = yeet_error!(res);
+    let api_pokemon = &*yeet_error!(res);
 
     let pokemon = Pokemon::from(api_pokemon);
     resp_200_Ok_json!(pokemon)
