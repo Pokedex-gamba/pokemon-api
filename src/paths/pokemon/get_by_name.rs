@@ -5,7 +5,7 @@ use actix_web::{
 };
 
 use crate::{
-    macros::{resp_200_Ok_json, yeet_error},
+    macros::{resp_200_Ok_json, resp_404_NotFound_json, yeet_error},
     models::{remote_api::ApiPokemon, Pokemon},
     req_caching::{self, ErrorAction},
 };
@@ -25,6 +25,7 @@ pub async fn get_by_name(
 
     let api_pokemon = &*yeet_error!(res);
 
-    let pokemon = Pokemon::from(api_pokemon);
+    let pokemon = Pokemon::try_from(api_pokemon).map_err(|_| resp_404_NotFound_json!());
+    let pokemon = yeet_error!(pokemon);
     resp_200_Ok_json!(pokemon)
 }
