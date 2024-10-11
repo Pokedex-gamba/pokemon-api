@@ -1,0 +1,16 @@
+[package]
+name = "pokemon-api"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+actix-web = "4.9.0"
+actix-web-grants = "4.1.1"
+futures-util = "0.3.31"
+jsonwebtoken = "9.3.0"
+serde = { version = "1.0.210", features = ["derive"] }
+serde_json = { version = "1.0.128", features = ["raw_value"] }
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"
