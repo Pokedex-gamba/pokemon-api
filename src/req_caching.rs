@@ -25,15 +25,15 @@ impl ErrorAction {
     }
 }
 
-static CACHE: LazyLock<Cache> = LazyLock::new(|| Cache::default());
+pub static CACHE: LazyLock<Cache> = LazyLock::new(|| Cache::default());
 
 #[derive(Default)]
-struct Cache {
+pub struct Cache {
     inner:
         Arc<std::sync::Mutex<HashMap<(String, TypeId), Arc<Mutex<Option<Box<dyn Any + Send>>>>>>>,
 }
 
-struct CacheEntry<T> {
+pub struct CacheEntry<T> {
     inner: OwnedMutexGuard<Option<Box<dyn Any + Send>>>,
     any_type: PhantomData<T>,
 }
