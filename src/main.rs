@@ -8,6 +8,7 @@ use jwt_stuff::JwtGrantsMiddleware;
 mod json_error;
 mod jwt_stuff;
 mod macros;
+mod models;
 
 async fn default_handler_debug(req: actix_web::HttpRequest) -> impl actix_web::Responder {
     actix_web::HttpResponse::NotFound().body(format!("{:#?}", req))
