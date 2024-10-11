@@ -28,6 +28,9 @@ macro_rules! build_resp {
                 ($message:expr) => {
                     actix_web::HttpResponse::$path().json($message)
                 };
+                ($message:expr, raw) => {
+                    actix_web::HttpResponse::$path().insert_header((actix_web::http::header::ContentType::json())).body($message)
+                };
             }
             #[allow(unused_imports)]
             pub use [<$name _json_macro>] as [<$name _json>];
