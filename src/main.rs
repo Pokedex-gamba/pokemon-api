@@ -9,6 +9,7 @@ mod json_error;
 mod jwt_stuff;
 mod macros;
 mod models;
+mod paths;
 mod req_caching;
 
 async fn default_handler_debug(req: actix_web::HttpRequest) -> impl actix_web::Responder {
@@ -68,6 +69,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(JsonConfig::default().error_handler(json_error::json_config_error_handler))
             .app_data(PathConfig::default().error_handler(json_error::json_config_error_handler))
             .app_data(Data::new(req_client))
+            .configure(paths::configure)
             .default_service(if is_debug_on {
                 web::to(default_handler_debug)
             } else {
