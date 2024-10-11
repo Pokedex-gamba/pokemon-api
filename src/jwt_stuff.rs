@@ -1,4 +1,5 @@
 use actix_web_grants::authorities::AuthDetails;
+use futures::future::LocalBoxFuture;
 use jsonwebtoken::{DecodingKey, Validation};
 use serde::{de::DeserializeOwned, Deserialize};
 use std::{
@@ -16,7 +17,6 @@ use actix_web::{
     },
     Error, HttpMessage,
 };
-use futures_util::future::LocalBoxFuture;
 
 use crate::json_error::JsonError;
 
