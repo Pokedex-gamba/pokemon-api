@@ -1,6 +1,6 @@
-mod get_all;
-mod get_by_name;
-mod get_random;
+pub mod get_all;
+pub mod get_by_name;
+pub mod get_random;
 
 use actix_web::web::ServiceConfig;
 
