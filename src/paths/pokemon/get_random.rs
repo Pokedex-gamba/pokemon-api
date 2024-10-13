@@ -10,8 +10,8 @@ use rand::Rng;
 use crate::{
     macros::{resp_200_Ok_json, yeet_error},
     models::{
+        pokemon::Pokemon,
         remote_api::{ApiPokemon, ApiPokemonList},
-        Pokemon,
     },
     req_caching::{self, ErrorAction},
 };

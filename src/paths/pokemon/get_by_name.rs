@@ -6,7 +6,7 @@ use actix_web::{
 
 use crate::{
     macros::{resp_200_Ok_json, resp_404_NotFound_json, yeet_error},
-    models::{remote_api::ApiPokemon, Pokemon},
+    models::{pokemon::Pokemon, remote_api::ApiPokemon},
     req_caching::{self, ErrorAction},
 };
 
