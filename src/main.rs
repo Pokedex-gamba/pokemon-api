@@ -3,6 +3,7 @@ use actix_web::{
     web::{self, Data, JsonConfig, PathConfig},
     App, HttpServer,
 };
+use actix_web_grants::GrantErrorConfig;
 use jwt_stuff::JwtGrantsMiddleware;
 
 mod json_error;
@@ -69,6 +70,19 @@ async fn main() -> std::io::Result<()> {
             .app_data(JsonConfig::default().error_handler(json_error::json_config_error_handler))
             .app_data(PathConfig::default().error_handler(json_error::json_config_error_handler))
             .app_data(Data::new(req_client))
+            .app_data(GrantErrorConfig::<String>::default().error_handler(move |condition, grants| {
+                use actix_web::ResponseError;
+
+                if !is_debug_on {
+                    return macros::resp_401_Unauthorized!();
+                }
+
+                let msg = format!(
+                    "Insufficient permissions. Condition '{}' needs to be fulfilled. Grants provided: {:?}",
+                    condition, grants
+                );
+                json_error::JsonError::new(msg, actix_web::http::StatusCode::FORBIDDEN).error_response()
+            }))
             .configure(paths::configure)
             .default_service(if is_debug_on {
                 web::to(default_handler_debug)
