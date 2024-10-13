@@ -10,6 +10,7 @@ use crate::{
     req_caching::{self, ErrorAction, CACHE},
 };
 
+#[actix_web_grants::protect("svc::pokemon_api::route::/pokemon/get_all")]
 #[get("/pokemon/get_all")]
 pub async fn get_all(req_client: Data<reqwest::Client>) -> impl Responder {
     let mut entry = CACHE.entry::<String>("get_all route".into()).await;

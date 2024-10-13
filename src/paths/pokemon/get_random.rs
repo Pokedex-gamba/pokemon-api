@@ -16,6 +16,7 @@ use crate::{
     req_caching::{self, ErrorAction},
 };
 
+#[actix_web_grants::protect("svc::pokemon_api::route::/pokemon/get_random")]
 #[get("/pokemon/get_random/{count}")]
 pub async fn get_random(
     count: web::Path<NonZeroU8>,

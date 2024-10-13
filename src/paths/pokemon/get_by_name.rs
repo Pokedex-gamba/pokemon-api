@@ -10,6 +10,7 @@ use crate::{
     req_caching::{self, ErrorAction},
 };
 
+#[actix_web_grants::protect("svc::pokemon_api::route::/pokemon/get_by_name")]
 #[get("/pokemon/get_by_name/{name}")]
 pub async fn get_by_name(
     name: web::Path<String>,
