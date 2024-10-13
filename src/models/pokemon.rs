@@ -1,11 +1,12 @@
 use serde::Serialize;
+use utoipa::ToSchema;
 
 use super::{
+    pokemon_pictures::PokemonPictures,
     remote_api::{ApiPokemon, ApiPokemonSpritesOtherOfficialArtwork},
-    PokemonPictures,
 };
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct Pokemon<'a> {
     pub name: &'a str,
     pub pictures: PokemonPictures<'a>,
