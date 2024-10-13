@@ -63,15 +63,16 @@ async fn main() -> std::io::Result<()> {
             .build()
             .unwrap();
 
-        App::new()
-            .wrap(JwtGrantsMiddleware::new(jwt_decoding_key, jwt_validation, is_debug_on))
-            .wrap(NormalizePath::new(TrailingSlash::Trim))
-            .wrap(Logger::default())
-            .wrap(Compress::default())
-            .app_data(JsonConfig::default().error_handler(json_error::config_json_error_handler))
-            .app_data(PathConfig::default().error_handler(json_error::config_json_error_handler))
-            .app_data(Data::new(req_client))
-            .app_data(GrantErrorConfig::<String>::default().error_handler(move |condition, grants| {
+        let json_config = JsonConfig::default().error_handler(
+            if is_debug_on { json_error::config_json_error_handler } else { empty_error::config_empty_error_handler }
+        );
+
+        let path_config = PathConfig::default().error_handler(
+            if is_debug_on { json_error::config_json_error_handler } else { empty_error::config_empty_error_handler }
+        );
+
+        let grants_string_error_config = GrantErrorConfig::<String>::default()
+            .error_handler(move |condition, grants| {
                 use actix_web::ResponseError;
 
                 if !is_debug_on {
@@ -83,7 +84,17 @@ async fn main() -> std::io::Result<()> {
                     condition, grants
                 );
                 json_error::JsonError::new(msg, actix_web::http::StatusCode::FORBIDDEN).error_response()
-            }))
+            });
+
+        App::new()
+            .wrap(JwtGrantsMiddleware::new(jwt_decoding_key, jwt_validation, is_debug_on))
+            .wrap(NormalizePath::new(TrailingSlash::Trim))
+            .wrap(Logger::default())
+            .wrap(Compress::default())
+            .app_data(json_config)
+            .app_data(path_config)
+            .app_data(grants_string_error_config)
+            .app_data(Data::new(req_client))
             .configure(paths::configure)
             .default_service(if is_debug_on {
                 web::to(default_handler_debug)
