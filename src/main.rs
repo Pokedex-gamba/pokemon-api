@@ -64,7 +64,7 @@ async fn main() -> std::io::Result<()> {
             .unwrap();
 
         App::new()
-            .wrap(JwtGrantsMiddleware::new(jwt_decoding_key, jwt_validation))
+            .wrap(JwtGrantsMiddleware::new(jwt_decoding_key, jwt_validation, is_debug_on))
             .wrap(NormalizePath::new(TrailingSlash::Trim))
             .wrap(Logger::default())
             .wrap(Compress::default())

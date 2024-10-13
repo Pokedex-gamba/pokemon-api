@@ -18,7 +18,7 @@ use actix_web::{
     Error, HttpMessage,
 };
 
-use crate::json_error::JsonError;
+use crate::{empty_error::EmptyError, json_error::JsonError};
 
 #[derive(Deserialize)]
 struct TokenData {
@@ -26,13 +26,19 @@ struct TokenData {
 }
 
 pub struct JwtGrantsMiddleware {
+    debug: bool,
     decoding_key: Arc<DecodingKey>,
     validation: Arc<Validation>,
 }
 
 impl JwtGrantsMiddleware {
-    pub fn new(decoding_key: DecodingKey, validation: Validation) -> Self {
+    pub fn new(
+        decoding_key: DecodingKey,
+        validation: Validation,
+        use_debug_response: bool,
+    ) -> Self {
         Self {
+            debug: use_debug_response,
             decoding_key: Arc::new(decoding_key),
             validation: Arc::new(validation),
         }
@@ -54,6 +60,7 @@ where
     fn new_transform(&self, service: S) -> Self::Future {
         ready(Ok(JwtGrantsService {
             service,
+            debug: self.debug,
             decoding_key: self.decoding_key.clone(),
             validation: self.validation.clone(),
         }))
@@ -62,6 +69,7 @@ where
 
 pub struct JwtGrantsService<S> {
     service: S,
+    debug: bool,
     decoding_key: Arc<DecodingKey>,
     validation: Arc<Validation>,
 }
@@ -132,7 +140,11 @@ where
             }
             Err(e) => {
                 return Box::pin(ready(Ok(req
-                    .error_response(JsonError::new(e.to_error_string(), StatusCode::BAD_REQUEST))
+                    .error_response::<Error>(if self.debug {
+                        JsonError::new(e.to_error_string(), StatusCode::BAD_REQUEST).into()
+                    } else {
+                        EmptyError::new(StatusCode::BAD_REQUEST).into()
+                    })
                     .map_into_right_body())));
             }
         }
