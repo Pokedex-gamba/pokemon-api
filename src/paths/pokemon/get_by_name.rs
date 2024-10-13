@@ -10,6 +10,14 @@ use crate::{
     req_caching::{self, ErrorAction},
 };
 
+#[utoipa::path(
+    responses(
+        (status = 200, description = "Returns pokemon by name", body = Pokemon),
+    ),
+    security(
+        ("jwt_grants" = ["svc::pokemon_api::route::/pokemon/get_by_name"]),
+    )
+)]
 #[actix_web_grants::protect("svc::pokemon_api::route::/pokemon/get_by_name")]
 #[get("/pokemon/get_by_name/{name}")]
 pub async fn get_by_name(

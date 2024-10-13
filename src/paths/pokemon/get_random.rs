@@ -14,6 +14,14 @@ use crate::{
     req_caching::{self, ErrorAction},
 };
 
+#[utoipa::path(
+    responses(
+        (status = 200, description = "Returns N random pokemons", body = [Pokemon]),
+    ),
+    security(
+        ("jwt_grants" = ["svc::pokemon_api::route::/pokemon/get_random"]),
+    )
+)]
 #[actix_web_grants::protect("svc::pokemon_api::route::/pokemon/get_random")]
 #[get("/pokemon/get_random/{count}")]
 pub async fn get_random(count: web::Path<u8>, req_client: Data<reqwest::Client>) -> impl Responder {

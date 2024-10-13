@@ -10,6 +10,14 @@ use crate::{
     req_caching::{self, ErrorAction, CACHE},
 };
 
+#[utoipa::path(
+    responses(
+        (status = 200, description = "Returns all pokemons", body = [Pokemon]),
+    ),
+    security(
+        ("jwt_grants" = ["svc::pokemon_api::route::/pokemon/get_all"]),
+    )
+)]
 #[actix_web_grants::protect("svc::pokemon_api::route::/pokemon/get_all")]
 #[get("/pokemon/get_all")]
 pub async fn get_all(req_client: Data<reqwest::Client>) -> impl Responder {
