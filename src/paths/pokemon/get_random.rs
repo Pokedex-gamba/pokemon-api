@@ -1,5 +1,3 @@
-use std::num::NonZeroU8;
-
 use actix_web::{
     get,
     web::{self, Data},
@@ -18,10 +16,7 @@ use crate::{
 
 #[actix_web_grants::protect("svc::pokemon_api::route::/pokemon/get_random")]
 #[get("/pokemon/get_random/{count}")]
-pub async fn get_random(
-    count: web::Path<NonZeroU8>,
-    req_client: Data<reqwest::Client>,
-) -> impl Responder {
+pub async fn get_random(count: web::Path<u8>, req_client: Data<reqwest::Client>) -> impl Responder {
     let res = req_caching::get_json::<ApiPokemonList>(
         &**req_client,
         "https://pokeapi.co/api/v2/pokemon?limit=99999",
@@ -31,10 +26,14 @@ pub async fn get_random(
     .await;
 
     let pokemon_list = &*yeet_error!(res).results;
-    let mut pokemons = Vec::with_capacity(count.get() as usize);
+    let mut pokemons = Vec::with_capacity(*count as usize);
     let mut rng = rand::thread_rng();
 
     loop {
+        if pokemons.len() == *count as usize {
+            break;
+        }
+
         let i = rng.gen_range(0..pokemon_list.len());
         let res = req_caching::get_json::<ApiPokemon>(
             &**req_client,
@@ -47,10 +46,6 @@ pub async fn get_random(
         match res {
             Ok(res) if Pokemon::try_from(&*res).is_ok() => pokemons.push(res.name.clone()),
             _ => {}
-        }
-
-        if pokemons.len() == count.get() as usize {
-            break;
         }
     }
 
