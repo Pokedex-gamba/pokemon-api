@@ -4,7 +4,10 @@ use actix_web::{
     App, HttpServer,
 };
 use actix_web_grants::GrantErrorConfig;
-use jwt_stuff::JwtGrantsMiddleware;
+use jwt_stuff::{JwtGrantsAddon, JwtGrantsMiddleware};
+use utoipa::{Modify, OpenApi};
+use utoipa_scalar::{Scalar, Servable};
+use utoipauto::utoipauto;
 
 mod empty_error;
 mod json_error;
@@ -24,6 +27,13 @@ async fn default_handler() -> impl actix_web::Responder {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     tracing_subscriber::fmt::init();
+
+    #[utoipauto]
+    #[derive(OpenApi)]
+    #[openapi(
+        modifiers(&JwtGrantsAddon, &AutoTagAddon)
+    )]
+    struct ApiDoc;
 
     let is_debug_on = std::env::var("debug")
         .map(|val| val == "1")
@@ -86,16 +96,28 @@ async fn main() -> std::io::Result<()> {
                 json_error::JsonError::new(msg, actix_web::http::StatusCode::FORBIDDEN).error_response()
             });
 
-        App::new()
-            .wrap(JwtGrantsMiddleware::new(jwt_decoding_key, jwt_validation, is_debug_on))
+        let jwt_grants_middleware = JwtGrantsMiddleware::new(
+            jwt_decoding_key,
+            jwt_validation,
+            is_debug_on
+        );
+
+        let mut app = App::new()
             .wrap(NormalizePath::new(TrailingSlash::Trim))
             .wrap(Logger::default())
             .wrap(Compress::default())
             .app_data(json_config)
             .app_data(path_config)
             .app_data(grants_string_error_config)
-            .app_data(Data::new(req_client))
-            .configure(paths::configure)
+            .app_data(Data::new(req_client));
+            if is_debug_on {
+                app = app.service(Scalar::with_url("/docs", ApiDoc::openapi()))
+            }
+            app.service(
+                web::scope("")
+                    .wrap(jwt_grants_middleware)
+                    .configure(paths::configure)
+            )
             .default_service(if is_debug_on {
                 web::to(default_handler_debug)
             } else {
@@ -106,4 +128,24 @@ async fn main() -> std::io::Result<()> {
     .expect("Failed to bind server to address")
     .run()
     .await
+}
+
+pub struct AutoTagAddon;
+
+impl Modify for AutoTagAddon {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        for (_, path) in &mut openapi.paths.paths {
+            for (_, operation) in &mut path.operations {
+                let tags = operation.tags.take().unwrap_or_default();
+
+                let mut new_tags = tags
+                    .into_iter()
+                    .filter(|t| !t.starts_with("crate::"))
+                    .collect::<Vec<_>>();
+                new_tags.push("All routes".into());
+
+                operation.tags = Some(new_tags);
+            }
+        }
+    }
 }
