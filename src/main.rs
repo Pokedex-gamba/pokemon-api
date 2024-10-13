@@ -6,6 +6,7 @@ use actix_web::{
 use actix_web_grants::GrantErrorConfig;
 use jwt_stuff::JwtGrantsMiddleware;
 
+mod empty_error;
 mod json_error;
 mod jwt_stuff;
 mod macros;
