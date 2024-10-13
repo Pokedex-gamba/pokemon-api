@@ -68,8 +68,8 @@ async fn main() -> std::io::Result<()> {
             .wrap(NormalizePath::new(TrailingSlash::Trim))
             .wrap(Logger::default())
             .wrap(Compress::default())
-            .app_data(JsonConfig::default().error_handler(json_error::json_config_error_handler))
-            .app_data(PathConfig::default().error_handler(json_error::json_config_error_handler))
+            .app_data(JsonConfig::default().error_handler(json_error::config_json_error_handler))
+            .app_data(PathConfig::default().error_handler(json_error::config_json_error_handler))
             .app_data(Data::new(req_client))
             .app_data(GrantErrorConfig::<String>::default().error_handler(move |condition, grants| {
                 use actix_web::ResponseError;

@@ -46,7 +46,7 @@ impl<Err: Serialize + Debug> ResponseError for JsonError<Err> {
     }
 }
 
-pub fn json_config_error_handler<Err: actix_web::ResponseError + 'static>(
+pub fn config_json_error_handler<Err: actix_web::ResponseError + 'static>(
     err: Err,
     _: &HttpRequest,
 ) -> actix_web::Error {
