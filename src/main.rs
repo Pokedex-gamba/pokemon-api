@@ -71,9 +71,16 @@ async fn main() -> std::io::Result<()> {
     let bind_address = std::env::var("address").unwrap_or("0.0.0.0:80".into());
 
     HttpServer::new(move || {
-        // TODO: Replace with actual key
-        let jwt_decoding_key = jsonwebtoken::DecodingKey::from_secret(decoding_key.as_bytes());
-        let mut jwt_validation = jsonwebtoken::Validation::default();
+        let jwt_decoding_key = match jsonwebtoken::DecodingKey::from_rsa_pem(decoding_key.as_bytes()) {
+            Ok(key) => key,
+            Err(e) => {
+                tracing::error!("Parsing of decoding key failed with error: {}", e);
+                tracing::info!("Fatal error encountered halting!");
+                std::thread::park();
+                panic!();
+            },
+        };
+        let mut jwt_validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::RS256);
         jwt_validation.set_required_spec_claims(&["exp", "nbf"]);
 
         let req_client = reqwest::Client::builder()
