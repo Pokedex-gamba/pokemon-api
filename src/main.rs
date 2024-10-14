@@ -36,6 +36,9 @@ async fn main() -> std::io::Result<()> {
     #[utoipauto]
     #[derive(OpenApi)]
     #[openapi(
+        info(
+            title = "Pokemon API"
+        ),
         modifiers(&JwtGrantsAddon, &AutoTagAddon)
     )]
     struct ApiDoc;
