@@ -4,7 +4,7 @@ use actix_web::{
     web::{self, Data, JsonConfig, PathConfig},
     App, HttpServer,
 };
-use actix_web_grants::GrantErrorConfig;
+use actix_web_grants::{GrantErrorConfig, GrantsConfig};
 use docs::{AutoTagAddon, JwtGrantsAddon};
 use empty_error::EmptyError;
 use json_error::JsonError;
@@ -101,6 +101,11 @@ async fn main() -> std::io::Result<()> {
                 json_error::JsonError::new(msg, actix_web::http::StatusCode::FORBIDDEN).error_response()
             });
 
+        let grants_config = GrantsConfig::default().missing_auth_details_error_handler(move || {
+            let code = StatusCode::UNAUTHORIZED;
+            if is_debug_on { JsonError::new("Authorization header is missing".to_string(), code).into() } else { EmptyError::new(code).into() }
+        });
+
         let jwt_grants_middleware = JwtGrantsMiddleware::new(
             jwt_decoding_key,
             jwt_validation,
@@ -116,6 +121,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(Compress::default())
             .app_data(json_config)
             .app_data(path_config)
+            .app_data(grants_config)
             .app_data(grants_string_error_config)
             .app_data(Data::new(req_client));
             if is_debug_on {
