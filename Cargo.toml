@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 actix-web = "4.9.0"
-actix-web-grants = { git = "https://github.com/HANDZCZ/protect-endpoints", rev = "968fa6b" }
+actix-web-grants = { git = "https://github.com/HANDZCZ/protect-endpoints", rev = "7ba4263" }
 futures = "0.3.31"
 jsonwebtoken = "9.3.0"
 paste = "1.0.15"
