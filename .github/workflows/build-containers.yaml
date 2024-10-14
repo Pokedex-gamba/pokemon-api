@@ -1,0 +1,98 @@
+name: Build containers
+
+on:
+  workflow_dispatch:
+
+env:
+  APP_NAME: pokemon-api
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build container for ${{ matrix.arch.name }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - name: aarch64
+            image_tag: aarch64-musl-stable-1.81.0
+            target_subdir: aarch64-unknown-linux-musl
+            platform: linux/arm64
+          - name: x86_64
+            image_tag: x86_64-musl-stable-1.81.0
+            target_subdir: x86_64-unknown-linux-musl
+            platform: linux/amd64
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+
+      - name: Cache cargo registry and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            /tmp/.cargo/bin/
+            /tmp/.cargo/registry/index/
+            /tmp/.cargo/registry/cache/
+            /tmp/.cargo/git/db/
+            target
+          key: ${{ runner.os }}-${{ matrix.arch.name }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.arch.name }}-cargo-
+
+      - name: Run the build process with Docker
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ghcr.io/blackdex/rust-musl:${{ matrix.arch.image_tag }}
+          options: |
+            -v ${{ github.workspace }}:/home/rust/src
+            -v /tmp/.cargo/bin/:/home/rust/.cargo/bin/
+            -v /tmp/.cargo/registry/index/:/home/rust/.cargo/registry/
+            -v /tmp/.cargo/registry/cache/:/home/rust/.cargo/cache/
+            -v /tmp/.cargo/git/db/:/home/rust/.cargo/git/db/
+          run: cargo build --release
+
+      - name: Prepare executable for container build
+        run: cp target/${{ matrix.arch.target_subdir }}/release/${{ env.APP_NAME }} ./app
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          platforms: ${{ matrix.arch.platform }}
+
+      - name: Login into registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: latest-${{ matrix.arch.name }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          tags: ${{ steps.meta.outputs.tags }}
+          push: true
+          platforms: ${{ matrix.arch.platform }}
+          outputs: type=docker,dest=/tmp/image.tar
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image-${{ matrix.arch.name }}
+          path: /tmp/image.tar
