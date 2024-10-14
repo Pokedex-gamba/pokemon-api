@@ -4,11 +4,13 @@ use actix_web::{
     App, HttpServer,
 };
 use actix_web_grants::GrantErrorConfig;
-use jwt_stuff::{JwtGrantsAddon, JwtGrantsMiddleware};
-use utoipa::{Modify, OpenApi};
+use docs::{AutoTagAddon, JwtGrantsAddon};
+use jwt_stuff::JwtGrantsMiddleware;
+use utoipa::OpenApi;
 use utoipa_scalar::{Scalar, Servable};
 use utoipauto::utoipauto;
 
+mod docs;
 mod empty_error;
 mod json_error;
 mod jwt_stuff;
@@ -128,24 +130,4 @@ async fn main() -> std::io::Result<()> {
     .expect("Failed to bind server to address")
     .run()
     .await
-}
-
-pub struct AutoTagAddon;
-
-impl Modify for AutoTagAddon {
-    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
-        for (_, path) in &mut openapi.paths.paths {
-            for (_, operation) in &mut path.operations {
-                let tags = operation.tags.take().unwrap_or_default();
-
-                let mut new_tags = tags
-                    .into_iter()
-                    .filter(|t| !t.starts_with("crate::"))
-                    .collect::<Vec<_>>();
-                new_tags.push("All routes".into());
-
-                operation.tags = Some(new_tags);
-            }
-        }
-    }
 }

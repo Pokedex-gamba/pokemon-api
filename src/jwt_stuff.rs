@@ -7,13 +7,6 @@ use std::{
     future::{ready, Ready},
     sync::Arc,
 };
-use utoipa::{
-    openapi::{
-        security::{Http, HttpAuthScheme, SecurityScheme},
-        RefOr, Response,
-    },
-    Modify,
-};
 
 use actix_web::{
     body::EitherBody,
@@ -157,43 +150,5 @@ where
 
         let fut = self.service.call(req);
         Box::pin(async move { Ok(fut.await?.map_into_left_body()) })
-    }
-}
-
-pub struct JwtGrantsAddon;
-
-impl Modify for JwtGrantsAddon {
-    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
-        let components = openapi.components.as_mut().unwrap();
-        components.add_security_scheme(
-            "jwt_grants",
-            SecurityScheme::Http(Http::new(HttpAuthScheme::Bearer)),
-        );
-
-        for (_, path) in &mut openapi.paths.paths {
-            for (_, operation) in &mut path.operations {
-                let Some(securities) = &mut operation.security else {
-                    continue;
-                };
-
-                let contains_self = securities
-                    .iter()
-                    .any(|security| security.value.contains_key("jwt_grants"));
-
-                if contains_self {
-                    let responses = &mut operation.responses.responses;
-                    responses.insert(
-                        "400".into(),
-                        RefOr::T(Response::new(
-                            "Malformed authorization header or invalid jwt token",
-                        )),
-                    );
-                    responses.insert(
-                        "401".into(),
-                        RefOr::T(Response::new("Insufficient permissions")),
-                    );
-                }
-            }
-        }
     }
 }
