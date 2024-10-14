@@ -43,7 +43,7 @@ async fn main() -> std::io::Result<()> {
     )]
     struct ApiDoc;
 
-    let is_debug_on = std::env::var("debug")
+    let is_debug_on = std::env::var("DEBUG")
         .map(|val| val == "1")
         .unwrap_or_default();
     tracing::info!(
@@ -51,7 +51,7 @@ async fn main() -> std::io::Result<()> {
         if is_debug_on { "enabled" } else { "disabled" }
     );
 
-    let decoding_key = match std::env::var("decoding_key") {
+    let decoding_key = match std::env::var("DECODING_KEY") {
         Ok(key) => {
             tracing::info!("Using decoding key from environment");
             key
@@ -68,7 +68,7 @@ async fn main() -> std::io::Result<()> {
             }),
     };
 
-    let bind_address = std::env::var("address").unwrap_or("0.0.0.0:80".into());
+    let bind_address = std::env::var("ADDRESS").unwrap_or("0.0.0.0:80".into());
 
     HttpServer::new(move || {
         let jwt_decoding_key = match jsonwebtoken::DecodingKey::from_rsa_pem(decoding_key.as_bytes()) {
