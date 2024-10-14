@@ -18,15 +18,46 @@ impl Modify for JwtGrantsAddon {
 
         for path in openapi.paths.paths.values_mut() {
             for operation in path.operations.values_mut() {
-                let Some(securities) = &mut operation.security else {
+                let Some(securities) = &operation.security else {
                     continue;
                 };
 
-                let contains_self = securities
+                let mut contains_self = false;
+                let mut required_grants = securities
                     .iter()
-                    .any(|security| security.value.contains_key("jwt_grants"));
+                    .filter(|security| security.value.contains_key("jwt_grants"))
+                    .fold("<pre>Required grants:".to_string(), |mut acc, security| {
+                        contains_self = true;
+
+                        for grants in security
+                            .value
+                            .iter()
+                            .filter(|(k, _)| k.as_str() == "jwt_grants")
+                            .map(|(_, v)| v)
+                        {
+                            acc.push_str("\n\t");
+                            if grants.is_empty() {
+                                acc.push_str("None");
+                            } else {
+                                acc.push_str(&grants.join(", "));
+                            }
+                        }
+
+                        acc
+                    });
+                required_grants.push_str("</pre>");
 
                 if contains_self {
+                    if let Some(description) = operation.description.as_mut() {
+                        if !description.is_empty() {
+                            description.push_str("<br><br>");
+                        }
+
+                        description.push_str(&required_grants);
+                    } else {
+                        operation.description = Some(required_grants);
+                    }
+
                     let responses = &mut operation.responses.responses;
                     responses.insert(
                         "400".into(),
