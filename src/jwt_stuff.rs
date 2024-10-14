@@ -18,14 +18,10 @@ use utoipa::{
 use actix_web::{
     body::EitherBody,
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
-    http::{
-        header::{self, HeaderValue},
-        StatusCode,
-    },
+    error::ErrorBadRequest,
+    http::header::{self, HeaderValue},
     Error, HttpMessage,
 };
-
-use crate::{empty_error::EmptyError, json_error::JsonError};
 
 #[derive(Deserialize)]
 struct TokenData {
@@ -33,22 +29,27 @@ struct TokenData {
 }
 
 pub struct JwtGrantsMiddleware {
-    debug: bool,
     decoding_key: Arc<DecodingKey>,
     validation: Arc<Validation>,
+    #[allow(clippy::type_complexity)]
+    err_handler: Option<Arc<dyn Fn(JwtDecodeErrors) -> Error + Send + Sync>>,
 }
 
 impl JwtGrantsMiddleware {
-    pub fn new(
-        decoding_key: DecodingKey,
-        validation: Validation,
-        use_debug_response: bool,
-    ) -> Self {
+    pub fn new(decoding_key: DecodingKey, validation: Validation) -> Self {
         Self {
-            debug: use_debug_response,
             decoding_key: Arc::new(decoding_key),
             validation: Arc::new(validation),
+            err_handler: None,
         }
+    }
+
+    pub fn error_handler<F>(mut self, f: F) -> Self
+    where
+        F: Fn(JwtDecodeErrors) -> Error + Send + Sync + 'static,
+    {
+        self.err_handler = Some(Arc::new(f));
+        self
     }
 }
 
@@ -67,28 +68,29 @@ where
     fn new_transform(&self, service: S) -> Self::Future {
         ready(Ok(JwtGrantsService {
             service,
-            debug: self.debug,
             decoding_key: self.decoding_key.clone(),
             validation: self.validation.clone(),
+            err_handler: self.err_handler.clone(),
         }))
     }
 }
 
 pub struct JwtGrantsService<S> {
     service: S,
-    debug: bool,
     decoding_key: Arc<DecodingKey>,
     validation: Arc<Validation>,
+    #[allow(clippy::type_complexity)]
+    err_handler: Option<Arc<dyn Fn(JwtDecodeErrors) -> Error + Send + Sync>>,
 }
 
-enum JwtDecodeErrors {
+pub enum JwtDecodeErrors {
     InvalidAuthHeader,
     InvalidJWTHeader,
     InvalidJWTToken(jsonwebtoken::errors::Error),
 }
 
 impl JwtDecodeErrors {
-    fn to_error_string(&self) -> String {
+    pub fn to_error_string(&self) -> String {
         match self {
             JwtDecodeErrors::InvalidAuthHeader => {
                 "Invalid authorization header - header contains invalid ASCII characters".into()
@@ -130,34 +132,30 @@ where
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let auth_header_value = req.headers().get(header::AUTHORIZATION).cloned();
-        let Some(auth_header_value) = auth_header_value else {
-            return Box::pin(ready(Ok(req
-                .error_response(JsonError::new(
-                    "Authorization header is missing",
-                    StatusCode::BAD_REQUEST,
-                ))
-                .map_into_right_body())));
+
+        if let Some(auth_header_value) = auth_header_value {
+            let claims = decode_jwt(&auth_header_value, &self.decoding_key, &self.validation);
+            match claims {
+                Ok(TokenData { grants }) => {
+                    req.extensions_mut().insert(AuthDetails {
+                        authorities: Arc::new(grants),
+                    });
+                }
+                Err(e) => {
+                    return Box::pin(ready(Ok(req
+                        .error_response({
+                            if let Some(err_handler) = self.err_handler.clone() {
+                                (err_handler)(e)
+                            } else {
+                                ErrorBadRequest(e.to_error_string())
+                            }
+                        })
+                        .map_into_right_body())));
+                }
+            }
         };
-        let claims = decode_jwt(&auth_header_value, &self.decoding_key, &self.validation);
-        match claims {
-            Ok(TokenData { grants }) => {
-                req.extensions_mut().insert(AuthDetails {
-                    authorities: Arc::new(grants),
-                });
-            }
-            Err(e) => {
-                return Box::pin(ready(Ok(req
-                    .error_response::<Error>(if self.debug {
-                        JsonError::new(e.to_error_string(), StatusCode::BAD_REQUEST).into()
-                    } else {
-                        EmptyError::new(StatusCode::BAD_REQUEST).into()
-                    })
-                    .map_into_right_body())));
-            }
-        }
 
         let fut = self.service.call(req);
-
         Box::pin(async move { Ok(fut.await?.map_into_left_body()) })
     }
 }
