@@ -1,0 +1,20 @@
+version: "3.7"
+
+services:
+  pokemon-api:
+    image: ghcr.io/pokedex-gamba/pokemon-api:latest-x86_64
+    restart: unless-stopped
+    environment:
+      # enables debug responses and '/docs' endpoint
+      # to disable comment this line or change the value to anything but '1'
+      DEBUG: 1
+
+      # set decoding key or mount it
+      # decoding key must be RS256
+      # DECODING_KEY: ""
+    volumes:
+      # mount decoding key or set it in environment
+      - ./decoding_key:/decoding_key
+    ports:
+      # choose a port at which service will be listening
+      - "8888:80"
