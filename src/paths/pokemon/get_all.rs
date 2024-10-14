@@ -27,7 +27,7 @@ pub async fn get_all(req_client: Data<reqwest::Client>) -> impl Responder {
     }
 
     let res = req_caching::get_json::<ApiPokemonList>(
-        &**req_client,
+        &req_client,
         "https://pokeapi.co/api/v2/pokemon?limit=99999",
         ErrorAction::ReturnInternalServerError,
         ErrorAction::ReturnInternalServerError,
@@ -39,7 +39,7 @@ pub async fn get_all(req_client: Data<reqwest::Client>) -> impl Responder {
     let api_pokemons = futures::stream::iter(pokemon_list.results.iter())
         .map(|pokemon| async {
             req_caching::get_json::<ApiPokemon>(
-                &**req_client,
+                &req_client,
                 &format!("https://pokeapi.co/api/v2/pokemon/{}", pokemon.name),
                 ErrorAction::ReturnNotFound,
                 ErrorAction::ReturnInternalServerError,

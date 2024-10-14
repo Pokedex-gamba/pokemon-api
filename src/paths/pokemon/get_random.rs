@@ -26,7 +26,7 @@ use crate::{
 #[get("/pokemon/get_random/{count}")]
 pub async fn get_random(count: web::Path<u8>, req_client: Data<reqwest::Client>) -> impl Responder {
     let res = req_caching::get_json::<ApiPokemonList>(
-        &**req_client,
+        &req_client,
         "https://pokeapi.co/api/v2/pokemon?limit=99999",
         ErrorAction::ReturnInternalServerError,
         ErrorAction::ReturnInternalServerError,
@@ -44,7 +44,7 @@ pub async fn get_random(count: web::Path<u8>, req_client: Data<reqwest::Client>)
 
         let i = rng.gen_range(0..pokemon_list.len());
         let res = req_caching::get_json::<ApiPokemon>(
-            &**req_client,
+            &req_client,
             &format!("https://pokeapi.co/api/v2/pokemon/{}", pokemon_list[i].name),
             ErrorAction::ReturnNotFound,
             ErrorAction::ReturnInternalServerError,

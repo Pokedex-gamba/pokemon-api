@@ -125,7 +125,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(grants_string_error_config)
             .app_data(Data::new(req_client));
             if is_debug_on {
-                app = app.service(Scalar::with_url("/docs", ApiDoc::openapi()))
+                app = app.service(Scalar::with_url("/docs", ApiDoc::openapi()));
             }
             app.configure(paths::configure)
             .default_service(if is_debug_on {

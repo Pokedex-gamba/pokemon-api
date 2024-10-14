@@ -25,7 +25,7 @@ pub async fn get_by_name(
     req_client: Data<reqwest::Client>,
 ) -> impl Responder {
     let res = req_caching::get_json::<ApiPokemon>(
-        &**req_client,
+        &req_client,
         &format!("https://pokeapi.co/api/v2/pokemon/{}", name.into_inner()),
         ErrorAction::ReturnInternalServerError,
         ErrorAction::ReturnNotFound,

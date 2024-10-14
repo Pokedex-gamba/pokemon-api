@@ -16,8 +16,8 @@ impl Modify for JwtGrantsAddon {
             SecurityScheme::Http(Http::new(HttpAuthScheme::Bearer)),
         );
 
-        for (_, path) in &mut openapi.paths.paths {
-            for (_, operation) in &mut path.operations {
+        for path in openapi.paths.paths.values_mut() {
+            for operation in path.operations.values_mut() {
                 let Some(securities) = &mut operation.security else {
                     continue;
                 };
@@ -52,8 +52,8 @@ pub struct AutoTagAddon;
 
 impl Modify for AutoTagAddon {
     fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
-        for (_, path) in &mut openapi.paths.paths {
-            for (_, operation) in &mut path.operations {
+        for path in openapi.paths.paths.values_mut() {
+            for operation in path.operations.values_mut() {
                 let tags = operation.tags.take().unwrap_or_default();
 
                 let mut new_tags = tags

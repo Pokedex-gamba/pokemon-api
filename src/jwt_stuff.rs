@@ -76,6 +76,7 @@ pub struct JwtGrantsService<S> {
     err_handler: Option<Arc<dyn Fn(JwtDecodeErrors) -> Error + Send + Sync>>,
 }
 
+#[allow(clippy::enum_variant_names)]
 pub enum JwtDecodeErrors {
     InvalidAuthHeader,
     InvalidJWTHeader,

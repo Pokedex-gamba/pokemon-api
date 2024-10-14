@@ -17,7 +17,7 @@ pub enum ErrorAction {
 }
 
 impl ErrorAction {
-    fn into_response(&self) -> HttpResponse {
+    fn response(&self) -> HttpResponse {
         match self {
             ErrorAction::ReturnNotFound => resp_404_NotFound!(),
             ErrorAction::ReturnInternalServerError => resp_500_InternalServerError!(),
@@ -25,10 +25,11 @@ impl ErrorAction {
     }
 }
 
-pub static CACHE: LazyLock<Cache> = LazyLock::new(|| Cache::default());
+pub static CACHE: LazyLock<Cache> = LazyLock::new(Cache::default);
 
 #[derive(Default)]
 pub struct Cache {
+    #[allow(clippy::type_complexity)]
     inner:
         Arc<std::sync::Mutex<HashMap<(String, TypeId), Arc<Mutex<Option<Box<dyn Any + Send>>>>>>>,
 }
@@ -40,7 +41,7 @@ pub struct CacheEntry<T> {
 
 impl<T: Send + 'static> CacheEntry<T> {
     pub fn get(&self) -> Option<&T> {
-        let data = (&*self.inner).as_ref()?;
+        let data = (*self.inner).as_ref()?;
         let data = data.downcast_ref::<T>().unwrap();
         Some(data)
     }
@@ -50,7 +51,7 @@ impl<T: Send + 'static> CacheEntry<T> {
     }
 
     pub fn exists(&self) -> bool {
-        (&*self.inner).is_some()
+        (*self.inner).is_some()
     }
 }
 
@@ -90,9 +91,9 @@ pub async fn get_json<T: DeserializeOwned + 'static + Send>(
                 entry.set(data);
                 Ok(RefVal(entry))
             }
-            Err(_) => Err(on_decode_error.into_response()),
+            Err(_) => Err(on_decode_error.response()),
         },
-        Err(_) => Err(on_request_error.into_response()),
+        Err(_) => Err(on_request_error.response()),
     }
 }
 
@@ -102,6 +103,6 @@ impl<T: Send + 'static> Deref for RefVal<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        &self.0.get().unwrap()
+        self.0.get().unwrap()
     }
 }
