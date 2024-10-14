@@ -101,7 +101,6 @@ async fn main() -> std::io::Result<()> {
         let jwt_grants_middleware = JwtGrantsMiddleware::new(
             jwt_decoding_key,
             jwt_validation,
-            is_debug_on
         );
 
         let mut app = App::new()
