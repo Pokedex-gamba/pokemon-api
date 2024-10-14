@@ -110,6 +110,7 @@ async fn main() -> std::io::Result<()> {
         });
 
         let mut app = App::new()
+            .wrap(jwt_grants_middleware)
             .wrap(NormalizePath::new(TrailingSlash::Trim))
             .wrap(Logger::default())
             .wrap(Compress::default())
@@ -120,11 +121,7 @@ async fn main() -> std::io::Result<()> {
             if is_debug_on {
                 app = app.service(Scalar::with_url("/docs", ApiDoc::openapi()))
             }
-            app.service(
-                web::scope("")
-                    .wrap(jwt_grants_middleware)
-                    .configure(paths::configure)
-            )
+            app.configure(paths::configure)
             .default_service(if is_debug_on {
                 web::to(default_handler_debug)
             } else {
