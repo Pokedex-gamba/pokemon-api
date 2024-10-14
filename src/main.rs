@@ -1,10 +1,13 @@
 use actix_web::{
+    http::StatusCode,
     middleware::{Compress, Logger, NormalizePath, TrailingSlash},
     web::{self, Data, JsonConfig, PathConfig},
     App, HttpServer,
 };
 use actix_web_grants::GrantErrorConfig;
 use docs::{AutoTagAddon, JwtGrantsAddon};
+use empty_error::EmptyError;
+use json_error::JsonError;
 use jwt_stuff::JwtGrantsMiddleware;
 use utoipa::OpenApi;
 use utoipa_scalar::{Scalar, Servable};
@@ -101,7 +104,10 @@ async fn main() -> std::io::Result<()> {
         let jwt_grants_middleware = JwtGrantsMiddleware::new(
             jwt_decoding_key,
             jwt_validation,
-        );
+        ).error_handler(move |error| {
+            let code = StatusCode::BAD_REQUEST;
+            if is_debug_on { JsonError::new(error.to_error_string(), code).into() } else { EmptyError::new(code).into() }
+        });
 
         let mut app = App::new()
             .wrap(NormalizePath::new(TrailingSlash::Trim))
