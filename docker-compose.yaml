@@ -14,7 +14,7 @@ services:
       # DECODING_KEY: ""
     volumes:
       # mount decoding key or set it in environment
-      - ./decoding_key:/decoding_key
+      - ./decoding_key:/decoding_key:ro
     ports:
       # choose a port at which service will be listening
       - "8888:80"
