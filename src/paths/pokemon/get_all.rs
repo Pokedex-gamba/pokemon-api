@@ -4,7 +4,8 @@ use serde_json::json;
 use crate::{
     macros::{resp_200_Ok_json, yeet_error},
     models::{pokemon::Pokemon, remote_api::ApiPokemonList, DataWrapper},
-    req_caching::{self, response_from_error},
+    req_caching,
+    req_util::response_from_error,
 };
 
 pub const CACHE_KEY: &str = "/pokemon/get_all";
