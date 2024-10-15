@@ -1,4 +1,4 @@
-use actix_web::{get, http::StatusCode, web::Data, HttpResponse, Responder};
+use actix_web::{get, http::StatusCode, web::Data, Either, HttpResponse, Responder};
 use futures::stream::StreamExt;
 
 use crate::{
@@ -22,10 +22,11 @@ use crate::{
 #[actix_web_grants::protect("svc::pokemon_api::route::/pokemon/get_all")]
 #[get("/pokemon/get_all")]
 pub async fn get_all(req_client: Data<reqwest::Client>) -> impl Responder {
-    let mut entry = CACHE.entry::<String>("get_all route".into()).await;
-    if let Some(data) = entry.get() {
-        return resp_200_Ok_json!(data.clone(), raw);
-    }
+    let entry = CACHE.entry::<String>("get_all route".into()).await;
+    let mut data_lock = match entry.get_or_write_lock().await {
+        Either::Left(data) => return resp_200_Ok_json!(data.clone(), raw),
+        Either::Right(write_lock) => write_lock,
+    };
 
     let res = req_caching::get_json::<ApiPokemonList, HttpResponse>(
         &req_client,
@@ -62,6 +63,6 @@ pub async fn get_all(req_client: Data<reqwest::Client>) -> impl Responder {
         .collect::<Vec<_>>();
 
     let data = serde_json::to_string(&pokemons).unwrap();
-    entry.set(data.clone());
+    data_lock.set(data.clone());
     resp_200_Ok_json!(data, raw)
 }
