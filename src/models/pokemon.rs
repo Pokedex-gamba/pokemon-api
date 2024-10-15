@@ -3,7 +3,7 @@ use utoipa::ToSchema;
 
 use super::{
     pokemon_pictures::PokemonPictures,
-    remote_api::{ApiPokemon, ApiPokemonSpritesOtherOfficialArtwork},
+    remote_api::{ApiPokemon, ApiPokemonSpritesOfficialArtwork},
 };
 
 #[derive(Serialize, ToSchema)]
@@ -16,8 +16,11 @@ impl<'a> TryFrom<&'a ApiPokemon> for Pokemon<'a> {
     type Error = ();
 
     fn try_from(value: &'a ApiPokemon) -> Result<Self, Self::Error> {
-        let sprites = &value.sprites.other.official_artwork;
-        if let ApiPokemonSpritesOtherOfficialArtwork {
+        if value.sprites.is_empty() {
+            return Err(());
+        }
+        let sprites = &value.sprites[0].sprites;
+        if let ApiPokemonSpritesOfficialArtwork {
             front_default: Some(front_default),
             front_shiny: Some(front_shiny),
         } = sprites

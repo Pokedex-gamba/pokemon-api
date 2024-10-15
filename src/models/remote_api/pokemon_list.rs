@@ -1,11 +1,9 @@
 use serde::Deserialize;
 
-#[derive(Deserialize)]
-pub struct ApiPokemonList {
-    pub results: Vec<ApiPokemonListItem>,
-}
+use super::ApiPokemon;
 
 #[derive(Deserialize)]
-pub struct ApiPokemonListItem {
-    pub name: String,
+pub struct ApiPokemonList {
+    #[serde(rename = "pokemon_v2_pokemon")]
+    pub results: Vec<ApiPokemon>,
 }

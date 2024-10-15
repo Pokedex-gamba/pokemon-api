@@ -5,5 +5,6 @@ use super::ApiPokemonSprites;
 #[derive(Deserialize, Clone)]
 pub struct ApiPokemon {
     pub name: String,
-    pub sprites: ApiPokemonSprites,
+    #[serde(rename = "pokemon_v2_pokemonsprites")]
+    pub sprites: Vec<ApiPokemonSprites>,
 }

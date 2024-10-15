@@ -2,17 +2,11 @@ use serde::Deserialize;
 
 #[derive(Deserialize, Clone)]
 pub struct ApiPokemonSprites {
-    pub other: ApiPokemonSpritesOther,
+    pub sprites: ApiPokemonSpritesOfficialArtwork,
 }
 
 #[derive(Deserialize, Clone)]
-pub struct ApiPokemonSpritesOther {
-    #[serde(rename = "official-artwork")]
-    pub official_artwork: ApiPokemonSpritesOtherOfficialArtwork,
-}
-
-#[derive(Deserialize, Clone)]
-pub struct ApiPokemonSpritesOtherOfficialArtwork {
+pub struct ApiPokemonSpritesOfficialArtwork {
     pub front_default: Option<String>,
     pub front_shiny: Option<String>,
 }
