@@ -25,6 +25,7 @@ pub async fn handle_request<D: Serialize, T: DeserializeOwned + Send + Sync + 's
     }
 }
 
+#[allow(dead_code)]
 pub async fn post_json<T: DeserializeOwned + Send + Sync + 'static, E>(
     req_client: &reqwest::Client,
     url: &str,
@@ -32,6 +33,22 @@ pub async fn post_json<T: DeserializeOwned + Send + Sync + 'static, E>(
     on_error: impl Fn(reqwest::Error) -> E,
 ) -> Result<T, E> {
     handle_request(req_client, reqwest::Method::POST, url, Some(data), on_error).await
+}
+
+#[allow(dead_code)]
+pub async fn get_json<T: DeserializeOwned + Send + Sync + 'static, E>(
+    req_client: &reqwest::Client,
+    url: &str,
+    on_error: impl Fn(reqwest::Error) -> E,
+) -> Result<T, E> {
+    handle_request(
+        req_client,
+        reqwest::Method::GET,
+        url,
+        Option::<&()>::None,
+        on_error,
+    )
+    .await
 }
 
 pub fn response_from_error(error: impl Serialize + Debug, status_code: StatusCode) -> HttpResponse {
