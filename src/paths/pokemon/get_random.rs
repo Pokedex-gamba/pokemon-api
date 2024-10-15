@@ -1,7 +1,8 @@
 use actix_web::{
     get,
+    http::StatusCode,
     web::{self, Data},
-    Responder,
+    HttpResponse, Responder,
 };
 use rand::Rng;
 
@@ -11,7 +12,7 @@ use crate::{
         pokemon::Pokemon,
         remote_api::{ApiPokemon, ApiPokemonList},
     },
-    req_caching::{self, ErrorAction},
+    req_caching::{self, response_from_error},
 };
 
 #[utoipa::path(
@@ -25,11 +26,15 @@ use crate::{
 #[actix_web_grants::protect("svc::pokemon_api::route::/pokemon/get_random")]
 #[get("/pokemon/get_random/{count}")]
 pub async fn get_random(count: web::Path<u8>, req_client: Data<reqwest::Client>) -> impl Responder {
-    let res = req_caching::get_json::<ApiPokemonList>(
+    let res = req_caching::get_json::<ApiPokemonList, HttpResponse>(
         &req_client,
         "https://pokeapi.co/api/v2/pokemon?limit=99999",
-        ErrorAction::ReturnInternalServerError,
-        ErrorAction::ReturnInternalServerError,
+        |error| {
+            response_from_error(
+                format!("Error encountered: {error}"),
+                StatusCode::INTERNAL_SERVER_ERROR,
+            )
+        },
     )
     .await;
 
@@ -43,11 +48,10 @@ pub async fn get_random(count: web::Path<u8>, req_client: Data<reqwest::Client>)
         }
 
         let i = rng.gen_range(0..pokemon_list.len());
-        let res = req_caching::get_json::<ApiPokemon>(
+        let res = req_caching::get_json::<ApiPokemon, ()>(
             &req_client,
             &format!("https://pokeapi.co/api/v2/pokemon/{}", pokemon_list[i].name),
-            ErrorAction::ReturnNotFound,
-            ErrorAction::ReturnInternalServerError,
+            |_| (),
         )
         .await;
 

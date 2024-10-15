@@ -1,4 +1,4 @@
-use actix_web::{get, web::Data, Responder};
+use actix_web::{get, http::StatusCode, web::Data, HttpResponse, Responder};
 use futures::stream::StreamExt;
 
 use crate::{
@@ -7,7 +7,7 @@ use crate::{
         pokemon::Pokemon,
         remote_api::{ApiPokemon, ApiPokemonList},
     },
-    req_caching::{self, ErrorAction, CACHE},
+    req_caching::{self, response_from_error, CACHE},
 };
 
 #[utoipa::path(
@@ -26,11 +26,15 @@ pub async fn get_all(req_client: Data<reqwest::Client>) -> impl Responder {
         return resp_200_Ok_json!(data.clone(), raw);
     }
 
-    let res = req_caching::get_json::<ApiPokemonList>(
+    let res = req_caching::get_json::<ApiPokemonList, HttpResponse>(
         &req_client,
         "https://pokeapi.co/api/v2/pokemon?limit=99999",
-        ErrorAction::ReturnInternalServerError,
-        ErrorAction::ReturnInternalServerError,
+        |error| {
+            response_from_error(
+                format!("Error encountered: {error}"),
+                StatusCode::INTERNAL_SERVER_ERROR,
+            )
+        },
     )
     .await;
 
@@ -38,11 +42,10 @@ pub async fn get_all(req_client: Data<reqwest::Client>) -> impl Responder {
 
     let api_pokemons = futures::stream::iter(pokemon_list.results.iter())
         .map(|pokemon| async {
-            req_caching::get_json::<ApiPokemon>(
+            req_caching::get_json::<ApiPokemon, ()>(
                 &req_client,
                 &format!("https://pokeapi.co/api/v2/pokemon/{}", pokemon.name),
-                ErrorAction::ReturnNotFound,
-                ErrorAction::ReturnInternalServerError,
+                |_| (),
             )
             .await
             .ok()
