@@ -17,7 +17,7 @@ impl EmptyError {
 
 impl Display for EmptyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("JsonError")
+        f.debug_struct("EmptyError")
             .field("status_code", &self.status_code)
             .finish()
     }
