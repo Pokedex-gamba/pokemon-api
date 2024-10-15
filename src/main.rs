@@ -20,6 +20,7 @@ mod jwt_stuff;
 mod macros;
 mod models;
 mod paths;
+mod queries;
 mod req_caching;
 
 async fn default_handler_debug(req: actix_web::HttpRequest) -> impl actix_web::Responder {
