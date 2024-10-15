@@ -13,6 +13,7 @@ use utoipa::OpenApi;
 use utoipa_scalar::{Scalar, Servable};
 use utoipauto::utoipauto;
 
+mod cache;
 mod docs;
 mod empty_error;
 mod json_error;
@@ -22,6 +23,7 @@ mod models;
 mod paths;
 mod queries;
 mod req_caching;
+mod req_util;
 
 async fn default_handler_debug(req: actix_web::HttpRequest) -> impl actix_web::Responder {
     actix_web::HttpResponse::NotFound().body(format!("{:#?}", req))
