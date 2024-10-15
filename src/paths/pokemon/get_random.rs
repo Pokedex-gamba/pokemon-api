@@ -14,6 +14,7 @@ use crate::{
 #[utoipa::path(
     responses(
         (status = 200, description = "Returns N random pokemons", body = [Pokemon]),
+        (status = 400, description = "Parameter count has wrong type or is outside of u8 range"),
         (status = 500, description = "Failed to fetch/deserialize data from remote api"),
     ),
     security(

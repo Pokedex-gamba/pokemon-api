@@ -16,6 +16,7 @@ use crate::{
 #[utoipa::path(
     responses(
         (status = 200, description = "Returns pokemon by name", body = Pokemon),
+        (status = 400, description = "Parameter name has wrong type or isn't only alphabetic ASCII characters"),
         (status = 404, description = "Pokemon was not found"),
         (status = 500, description = "Failed to fetch/deserialize data from remote api"),
     ),
