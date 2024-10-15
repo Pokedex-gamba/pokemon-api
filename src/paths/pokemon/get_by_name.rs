@@ -38,7 +38,7 @@ pub async fn get_by_name(
 
     let res = req_caching::post_json_cached::<DataWrapper<ApiPokemonList>, HttpResponse>(
         &req_client,
-        format!("/pokemon/get_by_name/{}", *name),
+        get_cache_key_for_pokemon(&name),
         "https://beta.pokeapi.co/graphql/v1beta",
         &json!(
             {
@@ -69,4 +69,9 @@ pub async fn get_by_name(
     });
     let pokemon = yeet_error!(pokemon);
     resp_200_Ok_json!(pokemon)
+}
+
+#[inline]
+pub fn get_cache_key_for_pokemon(pokemon_name: &str) -> String {
+    format!("pokemon//{pokemon_name}")
 }
