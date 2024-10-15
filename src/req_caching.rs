@@ -1,29 +1,16 @@
 use std::{
     any::{Any, TypeId},
     collections::HashMap,
+    fmt::Debug,
     marker::PhantomData,
     ops::Deref,
     sync::{Arc, LazyLock},
 };
 
-use crate::macros::{resp_404_NotFound, resp_500_InternalServerError};
-use actix_web::HttpResponse;
-use serde::de::DeserializeOwned;
+use crate::{empty_error::EmptyError, json_error::JsonError, IS_DEBUG_ON};
+use actix_web::{http::StatusCode, HttpResponse, ResponseError};
+use serde::{de::DeserializeOwned, Serialize};
 use tokio::sync::{Mutex, OwnedMutexGuard};
-
-pub enum ErrorAction {
-    ReturnNotFound,
-    ReturnInternalServerError,
-}
-
-impl ErrorAction {
-    fn response(&self) -> HttpResponse {
-        match self {
-            ErrorAction::ReturnNotFound => resp_404_NotFound!(),
-            ErrorAction::ReturnInternalServerError => resp_500_InternalServerError!(),
-        }
-    }
-}
 
 pub static CACHE: LazyLock<Cache> = LazyLock::new(Cache::default);
 
@@ -73,27 +60,26 @@ impl Cache {
     }
 }
 
-pub async fn get_json<T: DeserializeOwned + 'static + Send>(
+pub async fn get_json<T: DeserializeOwned + 'static + Send, E>(
     req_client: &reqwest::Client,
     url: &str,
-    on_request_error: ErrorAction,
-    on_decode_error: ErrorAction,
-) -> Result<RefVal<T>, HttpResponse> {
+    on_error: impl Fn(reqwest::Error) -> E,
+) -> Result<RefVal<T>, E> {
     let mut entry = CACHE.entry::<T>(url.to_string()).await;
     if entry.exists() {
         return Ok(RefVal(entry));
     }
 
     let response = req_client.get(url).send().await;
-    match response {
+    match response.and_then(reqwest::Response::error_for_status) {
         Ok(res) => match res.json::<T>().await {
             Ok(data) => {
                 entry.set(data);
                 Ok(RefVal(entry))
             }
-            Err(_) => Err(on_decode_error.response()),
+            Err(e) => Err((on_error)(e)),
         },
-        Err(_) => Err(on_request_error.response()),
+        Err(e) => Err((on_error)(e)),
     }
 }
 
@@ -104,5 +90,13 @@ impl<T: Send + 'static> Deref for RefVal<T> {
 
     fn deref(&self) -> &Self::Target {
         self.0.get().unwrap()
+    }
+}
+
+pub fn response_from_error(error: impl Serialize + Debug, status_code: StatusCode) -> HttpResponse {
+    if unsafe { IS_DEBUG_ON } {
+        JsonError::new(error, status_code).error_response()
+    } else {
+        EmptyError::new(status_code).error_response()
     }
 }
