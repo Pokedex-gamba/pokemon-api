@@ -1,18 +1,14 @@
 use actix_web::{
     get,
-    http::StatusCode,
     web::{self, Data},
-    HttpResponse, Responder,
+    Responder,
 };
 use rand::Rng;
-use serde_json::json;
 
 use super::get_all;
 use crate::{
     macros::{resp_200_Ok_json, yeet_error},
-    models::{pokemon::Pokemon, remote_api::ApiPokemonList, DataWrapper},
-    req_caching,
-    req_util::response_from_error,
+    models::pokemon::Pokemon,
 };
 
 #[utoipa::path(
@@ -27,25 +23,7 @@ use crate::{
 #[actix_web_grants::protect("svc::pokemon_api::route::/pokemon/get_random")]
 #[get("/pokemon/get_random/{count}")]
 pub async fn get_random(count: web::Path<u8>, req_client: Data<reqwest::Client>) -> impl Responder {
-    let res = req_caching::post_json_cached::<DataWrapper<ApiPokemonList>, HttpResponse>(
-        &req_client,
-        get_all::CACHE_KEY,
-        "https://beta.pokeapi.co/graphql/v1beta",
-        &json!(
-            {
-                "query": crate::queries::GET_ALL_POKEMONS,
-                "variables": null,
-                "operationName": "GetAllPokemons"
-            }
-        ),
-        |error| {
-            response_from_error(
-                format!("Error encountered: {error}"),
-                StatusCode::INTERNAL_SERVER_ERROR,
-            )
-        },
-    )
-    .await;
+    let res = get_all::get_all_pokemons(&req_client).await;
 
     let pokemon_list = &yeet_error!(res).data.results;
     let mut pokemons = Vec::with_capacity(*count as usize);
