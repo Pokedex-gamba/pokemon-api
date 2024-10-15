@@ -8,6 +8,24 @@ use utoipa::{
 
 pub struct JwtGrantsAddon;
 
+fn append_response(
+    responses: &mut utoipa::openapi::Responses,
+    key: impl Into<String>,
+    response: &str,
+) {
+    responses
+        .responses
+        .entry(key.into())
+        .and_modify(|ref_or_response| match ref_or_response {
+            RefOr::Ref(_) => unimplemented!("$ref in response is not supported by JwtGrantsAddon"),
+            RefOr::T(oa_response) => {
+                oa_response.description.push_str("<br>or<br>");
+                oa_response.description.push_str(response);
+            }
+        })
+        .or_insert(RefOr::T(Response::new(response)));
+}
+
 impl Modify for JwtGrantsAddon {
     fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
         let components = openapi.components.as_mut().unwrap();
@@ -58,21 +76,14 @@ impl Modify for JwtGrantsAddon {
                         operation.description = Some(required_grants);
                     }
 
-                    let responses = &mut operation.responses.responses;
-                    responses.insert(
-                        "400".into(),
-                        RefOr::T(Response::new(
-                            "Malformed authorization header or invalid jwt token",
-                        )),
+                    let responses = &mut operation.responses;
+                    append_response(
+                        responses,
+                        "400",
+                        "Malformed authorization header or invalid jwt token",
                     );
-                    responses.insert(
-                        "401".into(),
-                        RefOr::T(Response::new("Missing authorization header")),
-                    );
-                    responses.insert(
-                        "401".into(),
-                        RefOr::T(Response::new("Insufficient permissions")),
-                    );
+                    append_response(responses, "401", "Missing authorization header");
+                    append_response(responses, "401", "Insufficient permissions");
                 }
             }
         }
