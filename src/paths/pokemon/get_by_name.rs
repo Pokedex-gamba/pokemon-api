@@ -4,10 +4,11 @@ use actix_web::{
     web::{self, Data},
     HttpResponse, Responder,
 };
+use serde_json::json;
 
 use crate::{
-    macros::{resp_200_Ok_json, resp_404_NotFound_json, yeet_error},
-    models::{pokemon::Pokemon, remote_api::ApiPokemon},
+    macros::{resp_200_Ok_json, yeet_error},
+    models::{pokemon::Pokemon, remote_api::ApiPokemonList, DataWrapper},
     req_caching::{self, response_from_error},
 };
 
@@ -27,31 +28,44 @@ pub async fn get_by_name(
     name: web::Path<String>,
     req_client: Data<reqwest::Client>,
 ) -> impl Responder {
-    let res = req_caching::get_json::<ApiPokemon, HttpResponse>(
+    if name.chars().any(|c| !c.is_ascii_alphabetic()) {
+        return response_from_error(
+            "Name must be only ASCII alphabetic",
+            StatusCode::BAD_REQUEST,
+        );
+    }
+
+    let res = req_caching::post_json_cached::<DataWrapper<ApiPokemonList>, HttpResponse>(
         &req_client,
-        &format!("https://pokeapi.co/api/v2/pokemon/{}", name.into_inner()),
+        format!("/pokemon/get_by_name/{}", *name),
+        "https://beta.pokeapi.co/graphql/v1beta",
+        &json!(
+            {
+                "query": crate::queries::GET_POKEMON.replacen("$name", &name, 1),
+                "variables": null,
+                "operationName": "GetPokemon"
+            }
+        ),
         |error| {
-            let (error, status_code) = handle_error(error);
-            response_from_error(error, status_code)
+            response_from_error(
+                format!("Error encountered: {error}"),
+                StatusCode::INTERNAL_SERVER_ERROR,
+            )
         },
     )
     .await;
 
-    let api_pokemon = &*yeet_error!(res);
+    let api_pokemon = &yeet_error!(res).data.results;
+    let Some(api_pokemon) = api_pokemon.first() else {
+        return response_from_error("Pokemon was not found", StatusCode::NOT_FOUND);
+    };
 
-    let pokemon = Pokemon::try_from(api_pokemon).map_err(|_| resp_404_NotFound_json!());
+    let pokemon = Pokemon::try_from(api_pokemon).map_err(|_| {
+        response_from_error(
+            "Failed to convert api pokemon to our pokemon",
+            StatusCode::NOT_FOUND,
+        )
+    });
     let pokemon = yeet_error!(pokemon);
     resp_200_Ok_json!(pokemon)
-}
-
-fn handle_error(error: reqwest::Error) -> (String, StatusCode) {
-    match error.status() {
-        Some(reqwest::StatusCode::NOT_FOUND) => {
-            ("Pokemon was not found".into(), StatusCode::NOT_FOUND)
-        }
-        _ => (
-            format!("Error encountered: {error}"),
-            StatusCode::INTERNAL_SERVER_ERROR,
-        ),
-    }
 }

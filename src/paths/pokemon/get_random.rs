@@ -5,13 +5,12 @@ use actix_web::{
     HttpResponse, Responder,
 };
 use rand::Rng;
+use serde_json::json;
 
+use super::get_all;
 use crate::{
     macros::{resp_200_Ok_json, yeet_error},
-    models::{
-        pokemon::Pokemon,
-        remote_api::{ApiPokemon, ApiPokemonList},
-    },
+    models::{pokemon::Pokemon, remote_api::ApiPokemonList, DataWrapper},
     req_caching::{self, response_from_error},
 };
 
@@ -27,9 +26,17 @@ use crate::{
 #[actix_web_grants::protect("svc::pokemon_api::route::/pokemon/get_random")]
 #[get("/pokemon/get_random/{count}")]
 pub async fn get_random(count: web::Path<u8>, req_client: Data<reqwest::Client>) -> impl Responder {
-    let res = req_caching::get_json::<ApiPokemonList, HttpResponse>(
+    let res = req_caching::post_json_cached::<DataWrapper<ApiPokemonList>, HttpResponse>(
         &req_client,
-        "https://pokeapi.co/api/v2/pokemon?limit=99999",
+        get_all::CACHE_KEY,
+        "https://beta.pokeapi.co/graphql/v1beta",
+        &json!(
+            {
+                "query": crate::queries::GET_ALL_POKEMONS,
+                "variables": null,
+                "operationName": "GetAllPokemons"
+            }
+        ),
         |error| {
             response_from_error(
                 format!("Error encountered: {error}"),
@@ -39,7 +46,7 @@ pub async fn get_random(count: web::Path<u8>, req_client: Data<reqwest::Client>)
     )
     .await;
 
-    let pokemon_list = &*yeet_error!(res).results;
+    let pokemon_list = &yeet_error!(res).data.results;
     let mut pokemons = Vec::with_capacity(*count as usize);
     let mut rng = rand::thread_rng();
 
@@ -49,16 +56,8 @@ pub async fn get_random(count: web::Path<u8>, req_client: Data<reqwest::Client>)
         }
 
         let i = rng.gen_range(0..pokemon_list.len());
-        let res = req_caching::get_json::<ApiPokemon, ()>(
-            &req_client,
-            &format!("https://pokeapi.co/api/v2/pokemon/{}", pokemon_list[i].name),
-            |_| (),
-        )
-        .await;
-
-        match res {
-            Ok(res) if Pokemon::try_from(&*res).is_ok() => pokemons.push(res.name.clone()),
-            _ => {}
+        if let Ok(pokemon) = Pokemon::try_from(&pokemon_list[i]) {
+            pokemons.push(pokemon);
         }
     }
 

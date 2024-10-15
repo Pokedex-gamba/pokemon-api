@@ -1,14 +1,13 @@
-use actix_web::{get, http::StatusCode, web::Data, Either, HttpResponse, Responder};
-use futures::stream::StreamExt;
+use actix_web::{get, http::StatusCode, web::Data, HttpResponse, Responder};
+use serde_json::json;
 
 use crate::{
     macros::{resp_200_Ok_json, yeet_error},
-    models::{
-        pokemon::Pokemon,
-        remote_api::{ApiPokemon, ApiPokemonList},
-    },
-    req_caching::{self, response_from_error, CACHE},
+    models::{pokemon::Pokemon, remote_api::ApiPokemonList, DataWrapper},
+    req_caching::{self, response_from_error},
 };
+
+pub const CACHE_KEY: &str = "/pokemon/get_all";
 
 #[utoipa::path(
     responses(
@@ -22,15 +21,17 @@ use crate::{
 #[actix_web_grants::protect("svc::pokemon_api::route::/pokemon/get_all")]
 #[get("/pokemon/get_all")]
 pub async fn get_all(req_client: Data<reqwest::Client>) -> impl Responder {
-    let entry = CACHE.entry::<String>("get_all route".into()).await;
-    let mut data_lock = match entry.get_or_write_lock().await {
-        Either::Left(data) => return resp_200_Ok_json!(data.clone(), raw),
-        Either::Right(write_lock) => write_lock,
-    };
-
-    let res = req_caching::get_json::<ApiPokemonList, HttpResponse>(
+    let res = req_caching::post_json_cached::<DataWrapper<ApiPokemonList>, HttpResponse>(
         &req_client,
-        "https://pokeapi.co/api/v2/pokemon?limit=99999",
+        CACHE_KEY,
+        "https://beta.pokeapi.co/graphql/v1beta",
+        &json!(
+            {
+                "query": crate::queries::GET_ALL_POKEMONS,
+                "variables": null,
+                "operationName": "GetAllPokemons"
+            }
+        ),
         |error| {
             response_from_error(
                 format!("Error encountered: {error}"),
@@ -40,29 +41,12 @@ pub async fn get_all(req_client: Data<reqwest::Client>) -> impl Responder {
     )
     .await;
 
-    let pokemon_list = &*yeet_error!(res);
+    let pokemon_list = &yeet_error!(res).data.results;
 
-    let api_pokemons = futures::stream::iter(pokemon_list.results.iter())
-        .map(|pokemon| async {
-            req_caching::get_json::<ApiPokemon, ()>(
-                &req_client,
-                &format!("https://pokeapi.co/api/v2/pokemon/{}", pokemon.name),
-                |_| (),
-            )
-            .await
-            .ok()
-        })
-        .buffered(50)
-        .filter_map(|res| async { res })
-        .collect::<Vec<_>>()
-        .await;
-
-    let pokemons = api_pokemons
+    let pokemons = pokemon_list
         .iter()
-        .filter_map(|api_pokemon| Pokemon::try_from(&**api_pokemon).ok())
+        .filter_map(|api_pokemon| Pokemon::try_from(api_pokemon).ok())
         .collect::<Vec<_>>();
 
-    let data = serde_json::to_string(&pokemons).unwrap();
-    data_lock.set(data.clone());
-    resp_200_Ok_json!(data, raw)
+    resp_200_Ok_json!(pokemons)
 }
