@@ -14,6 +14,8 @@ use crate::{
 #[utoipa::path(
     responses(
         (status = 200, description = "Returns pokemon by name", body = Pokemon),
+        (status = 404, description = "Pokemon was not found"),
+        (status = 500, description = "Failed to fetch/deserialize data from remote api"),
     ),
     security(
         ("jwt_grants" = ["svc::pokemon_api::route::/pokemon/get_by_name"]),

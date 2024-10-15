@@ -18,6 +18,7 @@ use crate::{
 #[utoipa::path(
     responses(
         (status = 200, description = "Returns N random pokemons", body = [Pokemon]),
+        (status = 500, description = "Failed to fetch/deserialize data from remote api"),
     ),
     security(
         ("jwt_grants" = ["svc::pokemon_api::route::/pokemon/get_random"]),
