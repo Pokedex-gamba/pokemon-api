@@ -29,6 +29,8 @@ async fn default_handler() -> impl actix_web::Responder {
     actix_web::HttpResponse::NotFound().finish()
 }
 
+static mut IS_DEBUG_ON: bool = false;
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     tracing_subscriber::fmt::init();
@@ -46,6 +48,9 @@ async fn main() -> std::io::Result<()> {
     let is_debug_on = std::env::var("DEBUG")
         .map(|val| val == "1")
         .unwrap_or_default();
+    unsafe {
+        IS_DEBUG_ON = is_debug_on;
+    }
     tracing::info!(
         "Debug is {}",
         if is_debug_on { "enabled" } else { "disabled" }
