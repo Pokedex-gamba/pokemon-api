@@ -43,6 +43,7 @@ pub async fn get_json_cached<T: DeserializeOwned + Send + Sync + 'static, E>(
     .await
 }
 
+#[allow(dead_code)]
 pub async fn post_json_cached<T: DeserializeOwned + Send + Sync + 'static, E>(
     req_client: &reqwest::Client,
     cache_key: impl Into<String>,
