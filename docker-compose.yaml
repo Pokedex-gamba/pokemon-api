@@ -9,6 +9,15 @@ services:
       # to disable comment this line or change the value to anything but '1'
       DEBUG: 1
 
+      # enables fetching data from remote api when they are not found in cache
+      # will most likely lead to bogus data fetches
+      # when disabled PREFETCH is automatically enabled so cache is populated
+      # FETCH_UNVERIFIED_DATA_FROM_API: 1
+
+      # enables prefetching data from remote api
+      # this will speedup the api by a lot
+      PREFETCH_DATA: 1
+
       # set decoding key or mount it
       # decoding key must be RS256
       # DECODING_KEY: ""
