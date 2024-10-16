@@ -7,10 +7,10 @@ use actix_web::{
 use serde_json::json;
 
 use crate::{
+    cache::CACHE,
     macros::{resp_200_Ok_json, yeet_error},
     models::{pokemon::Pokemon, remote_api::ApiPokemonList, DataWrapper},
-    req_caching,
-    req_util::response_from_error,
+    req_util::{self, response_from_error},
 };
 
 #[utoipa::path(
@@ -37,9 +37,25 @@ pub async fn get_by_name(
         );
     }
 
-    let res = req_caching::post_json_cached::<DataWrapper<ApiPokemonList>, HttpResponse>(
+    let failed_to_convert = |_| {
+        response_from_error(
+            "Failed to convert api pokemon to our pokemon",
+            StatusCode::NOT_FOUND,
+        )
+    };
+
+    let entry = CACHE.entry(get_cache_key_for_pokemon(&name)).await;
+    let mut lock = match entry.get_or_write_lock().await {
+        actix_web::Either::Left(api_pokemon) => {
+            let pokemon = Pokemon::try_from(&*api_pokemon).map_err(failed_to_convert);
+            let pokemon = yeet_error!(pokemon);
+            return resp_200_Ok_json!(pokemon);
+        }
+        actix_web::Either::Right(write_lock) => write_lock,
+    };
+
+    let res = req_util::post_json::<DataWrapper<ApiPokemonList>, HttpResponse>(
         &req_client,
-        get_cache_key_for_pokemon(&name),
         "https://beta.pokeapi.co/graphql/v1beta",
         &json!(
             {
@@ -57,19 +73,18 @@ pub async fn get_by_name(
     )
     .await;
 
-    let api_pokemon = &yeet_error!(res).data.results;
-    let Some(api_pokemon) = api_pokemon.first() else {
+    let mut api_pokemon = yeet_error!(res);
+    if api_pokemon.data.results.len() != 1 {
         return response_from_error("Pokemon was not found", StatusCode::NOT_FOUND);
     };
+    let api_pokemon = api_pokemon.data.results.remove(0);
 
-    let pokemon = Pokemon::try_from(api_pokemon).map_err(|_| {
-        response_from_error(
-            "Failed to convert api pokemon to our pokemon",
-            StatusCode::NOT_FOUND,
-        )
-    });
-    let pokemon = yeet_error!(pokemon);
-    resp_200_Ok_json!(pokemon)
+    let pokemon = Pokemon::try_from(&api_pokemon)
+        .map_err(failed_to_convert)
+        .map(|pokemon| resp_200_Ok_json!(pokemon));
+
+    lock.set(api_pokemon);
+    yeet_error!(pokemon)
 }
 
 #[inline]
