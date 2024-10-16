@@ -45,7 +45,7 @@ jobs:
             /tmp/.cargo/registry/cache/
             /tmp/.cargo/git/db/
             target
-          key: ${{ runner.os }}-${{ matrix.arch.name }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-${{ matrix.arch.name }}-cargo-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
           restore-keys: ${{ runner.os }}-${{ matrix.arch.name }}-cargo-
 
       - name: Run the build process with Docker
