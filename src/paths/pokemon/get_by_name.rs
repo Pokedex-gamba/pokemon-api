@@ -11,6 +11,7 @@ use crate::{
     macros::{resp_200_Ok_json, yeet_error},
     models::{pokemon::Pokemon, remote_api::ApiPokemonList, DataWrapper},
     req_util::{self, response_from_error},
+    FETCH_UNVERIFIED_DATA_FROM_API,
 };
 
 #[utoipa::path(
@@ -36,6 +37,7 @@ pub async fn get_by_name(
             StatusCode::BAD_REQUEST,
         );
     }
+    let name = name.to_ascii_lowercase();
 
     let failed_to_convert = |_| {
         response_from_error(
@@ -45,6 +47,17 @@ pub async fn get_by_name(
     };
 
     let entry = CACHE.entry(get_cache_key_for_pokemon(&name)).await;
+    if unsafe { !FETCH_UNVERIFIED_DATA_FROM_API } {
+        return match entry.read().await.get() {
+            Some(api_pokemon) => {
+                let pokemon = Pokemon::try_from(api_pokemon).map_err(failed_to_convert);
+                let pokemon = yeet_error!(pokemon);
+                resp_200_Ok_json!(pokemon)
+            }
+            None => response_from_error("Pokemon was not found", StatusCode::NOT_FOUND),
+        };
+    }
+
     let mut lock = match entry.get_or_write_lock().await {
         actix_web::Either::Left(api_pokemon) => {
             let pokemon = Pokemon::try_from(&*api_pokemon).map_err(failed_to_convert);
