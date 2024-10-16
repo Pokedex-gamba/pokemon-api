@@ -74,11 +74,7 @@ pub async fn get_all_pokemons(
             actix_web::Either::Left(_) => continue,
             actix_web::Either::Right(write_lock) => write_lock,
         };
-        lock.set(DataWrapper {
-            data: ApiPokemonList {
-                results: vec![pokemon.clone()],
-            },
-        });
+        lock.set(pokemon.clone());
     }
 
     Ok(data)
