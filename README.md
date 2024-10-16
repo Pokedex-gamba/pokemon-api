@@ -33,3 +33,10 @@ Then just edit the `docker-compose.yaml` according to comments.
 ```sh
 docker compose up -d
 ```
+
+## How to use
+
+First you need to generate RS256 JWT token with the `private_key.pem` and then set at in `authorization` header.
+
+If you enabled `DEBUG`, then you will get debug responses from all routes.\
+It will also enable `/docs` endpoint so don't forget to check it out!
