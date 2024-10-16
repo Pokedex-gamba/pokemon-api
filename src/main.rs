@@ -33,6 +33,7 @@ async fn default_handler() -> impl actix_web::Responder {
 }
 
 static mut IS_DEBUG_ON: bool = false;
+static mut FETCH_UNVERIFIED_DATA_FROM_API: bool = false;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -76,6 +77,45 @@ async fn main() -> std::io::Result<()> {
             }),
     };
 
+    let req_client = reqwest::Client::builder()
+            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
+            .build()
+            .unwrap();
+
+    {
+        let fetch_unverified_enabled = std::env::var("FETCH_UNVERIFIED_DATA_FROM_API")
+            .map(|val| val == "1")
+            .unwrap_or_default();
+        unsafe {
+            FETCH_UNVERIFIED_DATA_FROM_API = fetch_unverified_enabled;
+        }
+        tracing::info!(
+            "Fetching unverified data form api is {}",
+            if fetch_unverified_enabled {
+                "enabled"
+            } else {
+                "disabled"
+            }
+        );
+
+        let prefetch_enabled = std::env::var("PREFETCH_DATA")
+            .map(|val| val == "1")
+            .unwrap_or_default();
+
+        if !fetch_unverified_enabled || prefetch_enabled {
+            tracing::info!("Prefetching data");
+            let res = paths::pokemon::get_all::get_all_pokemons(&req_client).await;
+            if res.is_err() && !fetch_unverified_enabled {
+                tracing::error!(
+                    "Data could not be prefetched and fetching unverified data form api is enabled, this would lead to no data being available"
+                );
+                tracing::info!("Fatal error encountered halting!");
+                std::thread::park();
+                panic!();
+            }
+        }
+    }
+
     let bind_address = std::env::var("ADDRESS").unwrap_or("0.0.0.0:80".into());
 
     HttpServer::new(move || {
@@ -90,11 +130,6 @@ async fn main() -> std::io::Result<()> {
         };
         let mut jwt_validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::RS256);
         jwt_validation.set_required_spec_claims(&["exp", "nbf"]);
-
-        let req_client = reqwest::Client::builder()
-            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
-            .build()
-            .unwrap();
 
         let json_config = JsonConfig::default().error_handler(
             if is_debug_on { json_error::config_json_error_handler } else { empty_error::config_empty_error_handler }
@@ -141,7 +176,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(path_config)
             .app_data(grants_config)
             .app_data(grants_string_error_config)
-            .app_data(Data::new(req_client));
+            .app_data(Data::new(req_client.clone()));
             if is_debug_on {
                 app = app.service(Scalar::with_url("/docs", ApiDoc::openapi()));
             }
